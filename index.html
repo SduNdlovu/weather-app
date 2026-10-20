@@ -1,26 +1,237 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Weather App</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Atmos — modern weather forecasts with live data, hourly charts, and seven-day outlooks." />
+  <title>Atmos — Weather</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="https://unpkg.com/lucide@0.468.0" defer></script>
+  <script src="script.js" defer></script>
 </head>
 <body>
-  <div class="weather-app">
-    <h1 class="title">Weather App</h1>
-
-    <div class="search-box">
-      <input type="text" id="cityInput" placeholder="Enter city (e.g. London)" />
-      <button id="searchBtn" type="button">Search</button>
-    </div>
-
-    <div id="currentWeather" class="fade hidden"></div>
-
-    <h2 class="forecast-title fade hidden">5-Day Forecast</h2>
-    <div id="forecast" class="forecast-container fade hidden"></div>
+  <div class="weather-bg" id="weatherBg" aria-hidden="true">
+    <div class="weather-bg__gradient"></div>
+    <div class="weather-bg__effects" id="weatherEffects"></div>
   </div>
 
-  <script src="script.js"></script>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="navbar" role="banner">
+    <div class="navbar__inner">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">
+          <i data-lucide="cloud-sun"></i>
+        </span>
+        <span class="brand__name">Atmos</span>
+      </div>
+
+      <form class="search" id="searchForm" role="search" autocomplete="off">
+        <label class="sr-only" for="searchInput">Search for a city</label>
+        <div class="search__field">
+          <i data-lucide="search" class="search__icon" aria-hidden="true"></i>
+          <input
+            type="search"
+            id="searchInput"
+            name="city"
+            placeholder="Search city…"
+            aria-autocomplete="list"
+            aria-controls="searchResults"
+            aria-expanded="false"
+            spellcheck="false"
+          />
+          <button type="submit" class="btn btn--primary search__submit" aria-label="Search">
+            <span class="btn__label">Search</span>
+            <i data-lucide="arrow-right" aria-hidden="true"></i>
+          </button>
+        </div>
+        <ul class="search__results" id="searchResults" role="listbox" hidden></ul>
+      </form>
+
+      <div class="navbar__actions">
+        <button type="button" class="btn btn--ghost" id="locationBtn" aria-label="Use my current location">
+          <i data-lucide="map-pin" aria-hidden="true"></i>
+          <span class="btn__label">Locate</span>
+        </button>
+        <div class="toggle-group" role="group" aria-label="Temperature unit">
+          <button type="button" class="toggle-btn is-active" id="unitC" aria-pressed="true" data-unit="celsius">°C</button>
+          <button type="button" class="toggle-btn" id="unitF" aria-pressed="false" data-unit="fahrenheit">°F</button>
+        </div>
+        <button type="button" class="btn btn--icon" id="themeToggle" aria-label="Switch to light theme">
+          <i data-lucide="sun" class="theme-icon theme-icon--sun" aria-hidden="true"></i>
+          <i data-lucide="moon" class="theme-icon theme-icon--moon" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="recents" id="recentsBar" hidden>
+      <span class="recents__label">Recent</span>
+      <div class="recents__list" id="recentsList"></div>
+    </div>
+  </header>
+
+  <main id="main-content" class="main">
+    <div class="status-banner" id="statusBanner" role="status" aria-live="polite" hidden></div>
+
+    <section class="hero-weather glass" id="heroWeather" aria-labelledby="locationName">
+      <div class="hero-weather__skeleton skeleton-block" id="heroSkeleton" hidden>
+        <div class="skel skel--lg"></div>
+        <div class="skel skel--xl"></div>
+        <div class="skel skel--md"></div>
+      </div>
+      <div class="hero-weather__content" id="heroContent">
+        <div class="hero-weather__meta">
+          <h1 class="hero-weather__location" id="locationName">—</h1>
+          <p class="hero-weather__datetime" id="localDateTime">—</p>
+          <p class="hero-weather__condition" id="conditionText">—</p>
+        </div>
+        <div class="hero-weather__temp-block">
+          <div class="hero-weather__icon-wrap" id="currentIcon" aria-hidden="true"></div>
+          <p class="hero-weather__temp" id="currentTemp">—</p>
+        </div>
+        <div class="hero-weather__details">
+          <span id="feelsLike">Feels like —</span>
+          <span id="highLow">H: — · L: —</span>
+          <span id="sunTimes">Sunrise — · Sunset —</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="statsHeading">
+      <h2 class="section__title" id="statsHeading">Conditions</h2>
+      <div class="stats-grid" id="statsGrid">
+        <article class="stat-card glass" data-stat="humidity">
+          <div class="stat-card__icon"><i data-lucide="droplets"></i></div>
+          <h3 class="stat-card__label">Humidity</h3>
+          <p class="stat-card__value" id="statHumidity">—</p>
+          <p class="stat-card__hint" id="hintHumidity"></p>
+        </article>
+        <article class="stat-card glass" data-stat="wind">
+          <div class="stat-card__icon"><i data-lucide="wind"></i></div>
+          <h3 class="stat-card__label">Wind</h3>
+          <p class="stat-card__value" id="statWind">—</p>
+          <p class="stat-card__hint" id="hintWind"></p>
+        </article>
+        <article class="stat-card glass" data-stat="uv">
+          <div class="stat-card__icon"><i data-lucide="sun"></i></div>
+          <h3 class="stat-card__label">UV Index</h3>
+          <p class="stat-card__value" id="statUv">—</p>
+          <p class="stat-card__hint" id="hintUv"></p>
+        </article>
+        <article class="stat-card glass" data-stat="pressure">
+          <div class="stat-card__icon"><i data-lucide="gauge"></i></div>
+          <h3 class="stat-card__label">Pressure</h3>
+          <p class="stat-card__value" id="statPressure">—</p>
+          <p class="stat-card__hint" id="hintPressure"></p>
+        </article>
+        <article class="stat-card glass" data-stat="visibility">
+          <div class="stat-card__icon"><i data-lucide="eye"></i></div>
+          <h3 class="stat-card__label">Visibility</h3>
+          <p class="stat-card__value" id="statVisibility">—</p>
+          <p class="stat-card__hint" id="hintVisibility"></p>
+        </article>
+        <article class="stat-card glass" data-stat="clouds">
+          <div class="stat-card__icon"><i data-lucide="cloud"></i></div>
+          <h3 class="stat-card__label">Cloud Cover</h3>
+          <p class="stat-card__value" id="statClouds">—</p>
+          <p class="stat-card__hint" id="hintClouds"></p>
+        </article>
+        <article class="stat-card glass" data-stat="precip">
+          <div class="stat-card__icon"><i data-lucide="cloud-rain"></i></div>
+          <h3 class="stat-card__label">Precipitation</h3>
+          <p class="stat-card__value" id="statPrecip">—</p>
+          <p class="stat-card__hint" id="hintPrecip"></p>
+        </article>
+        <article class="stat-card glass" data-stat="dew">
+          <div class="stat-card__icon"><i data-lucide="thermometer"></i></div>
+          <h3 class="stat-card__label">Dew Point</h3>
+          <p class="stat-card__value" id="statDew">—</p>
+          <p class="stat-card__hint" id="hintDew"></p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="hourlyHeading">
+      <div class="section__header">
+        <h2 class="section__title" id="hourlyHeading">Hourly Forecast</h2>
+        <p class="section__subtitle">Next 24 hours</p>
+      </div>
+      <div class="hourly-scroll" id="hourlyScroll" tabindex="0" role="region" aria-label="Hourly forecast">
+        <div class="hourly-track" id="hourlyTrack"></div>
+      </div>
+    </section>
+
+    <section class="section charts-section" aria-labelledby="chartsHeading">
+      <h2 class="section__title" id="chartsHeading">Today’s Trends</h2>
+      <div class="charts-grid">
+        <article class="chart-card glass">
+          <h3 class="chart-card__title">Temperature</h3>
+          <div class="chart-wrap">
+            <canvas id="tempChart" aria-label="Hourly temperature chart"></canvas>
+          </div>
+        </article>
+        <article class="chart-card glass">
+          <h3 class="chart-card__title">Precipitation Chance</h3>
+          <div class="chart-wrap">
+            <canvas id="precipChart" aria-label="Hourly precipitation probability chart"></canvas>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="dailyHeading">
+      <div class="section__header">
+        <h2 class="section__title" id="dailyHeading">7-Day Forecast</h2>
+        <p class="section__subtitle">Daily highs, lows, and rain chance</p>
+      </div>
+      <div class="daily-list" id="dailyList"></div>
+    </section>
+
+    <section class="section insights-section" aria-labelledby="insightsHeading">
+      <h2 class="section__title" id="insightsHeading">Insights</h2>
+      <div class="insights-grid">
+        <article class="insight-card glass">
+          <h3 class="insight-card__title"><i data-lucide="sunrise" aria-hidden="true"></i> Sun &amp; Daylight</h3>
+          <dl class="insight-dl">
+            <div><dt>Sunrise</dt><dd id="insightSunrise">—</dd></div>
+            <div><dt>Sunset</dt><dd id="insightSunset">—</dd></div>
+            <div><dt>Daylight</dt><dd id="insightDaylight">—</dd></div>
+          </dl>
+          <div class="daylight-bar" aria-hidden="true">
+            <div class="daylight-bar__fill" id="daylightFill"></div>
+          </div>
+        </article>
+        <article class="insight-card glass">
+          <h3 class="insight-card__title"><i data-lucide="leaf" aria-hidden="true"></i> Air Quality</h3>
+          <p class="aqi-value" id="aqiValue">—</p>
+          <p class="aqi-label" id="aqiLabel">—</p>
+          <p class="insight-card__text" id="aqiDetail"></p>
+        </article>
+        <article class="insight-card glass insight-card--wide">
+          <h3 class="insight-card__title"><i data-lucide="info" aria-hidden="true"></i> Summary</h3>
+          <p class="insight-card__text" id="weatherSummary">Search for a city or use your location to see live weather.</p>
+          <div class="alerts" id="alertsBox" hidden>
+            <h4 class="alerts__title">Notices</h4>
+            <ul class="alerts__list" id="alertsList"></ul>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>. Built with vanilla HTML, CSS &amp; JavaScript.</p>
+  </footer>
+
+  <div class="loader-overlay" id="loader" hidden>
+    <div class="loader" role="status" aria-label="Loading weather data">
+      <div class="loader__ring"></div>
+      <p>Fetching weather…</p>
+    </div>
+  </div>
 </body>
 </html>
